@@ -287,6 +287,8 @@ function populateSelect(id,opts,val){
 var T0_MODE = 'single';
 var CITY_ORDER=['Nashik','Chandigarh','Ahmedabad'];
   function sortCities(arr){return arr.slice().sort(function(a,b){var ia=CITY_ORDER.indexOf(a),ib=CITY_ORDER.indexOf(b);return(ia===-1?99:ia)-(ib===-1?99:ib);});}
+var MONTH_NUM={Jan:1,Feb:2,Mar:3,Apr:4,May:5,Jun:6,Jul:7,Aug:8,Sep:9,Oct:10,Nov:11,Dec:12};
+function monthSortKey(ms){var p=ms.split("'");return (2000+parseInt(p[1]))*100+(MONTH_NUM[p[0]]||0);}
 
 function setT0Mode(mode, btn){
   T0_MODE = mode;
@@ -649,7 +651,6 @@ function renderTab3(){
   cityEl.value=cityFilter;
   var MDAYS={Jan:31,Feb:28,Mar:31,Apr:30,May:31,Jun:30,Jul:31,Aug:31,Sep:30,Oct:31,Nov:30,Dec:31};
   var MNUM={Jan:1,Feb:2,Mar:3,Apr:4,May:5,Jun:6,Jul:7,Aug:8,Sep:9,Oct:10,Nov:11,Dec:12};
-  function monthSortKey(ms){var p=ms.split("'");return (2000+parseInt(p[1]))*100+(MNUM[p[0]]||0);}
   var months=[...new Set(DATA.map(function(r){return r.month;}))].sort(function(a,b){return monthSortKey(a)-monthSortKey(b);});
   function activeDays(rows){return new Set(rows.filter(function(r){return r.gen_leads>0||r.spends>0;}).map(function(r){return r.dateStr;})).size||1;}
   function getA(rows){
