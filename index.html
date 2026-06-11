@@ -5,7 +5,34 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Used Cars Performance Dashboard</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/dist/tabler-icons.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+(function(){
+  var cdns=[
+    'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+    'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
+    'https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js'
+  ];
+  var idx=0;
+  function tryNext(){
+    if(idx>=cdns.length){
+      document.addEventListener('DOMContentLoaded',function(){
+        var el=document.getElementById('msgBox');
+        if(el){el.className='msg err';el.textContent='\u26a0 Could not load Excel parser library. Check your internet connection and reload.';el.style.display='block';}
+      });
+      return;
+    }
+    var s=document.createElement('script');
+    s.src=cdns[idx++];
+    s.onload=function(){
+      // XLSX loaded — now start the data fetch
+      if(typeof loadDataFromRepo==='function') loadDataFromRepo();
+    };
+    s.onerror=function(){ tryNext(); };
+    document.head.appendChild(s);
+  }
+  tryNext();
+})();
+</script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -120,6 +147,35 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 @keyframes spin{to{transform:rotate(360deg)}}
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
+
+/* ── TABLE (tab1) ── */
+.table-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden}
+.table-toolbar{display:flex;align-items:center;gap:12px;padding:13px 17px;background:var(--surface2);border-bottom:1px solid var(--border);flex-wrap:wrap}
+.toolbar-title{font-size:14px;font-weight:600}
+.tfilter{display:flex;align-items:center;gap:7px}
+.tfilter label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em}
+.tfilter select{font-size:12px;padding:5px 8px;border-radius:6px;max-width:200px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:inherit}
+.row-count{margin-left:auto;font-size:12px;color:var(--text2);background:var(--surface);border:1px solid var(--border);padding:4px 10px;border-radius:20px;white-space:nowrap}
+.table-outer{overflow-x:auto}
+.table-scroll{max-height:520px;overflow-y:auto}
+.table-scroll table{width:100%;border-collapse:collapse;min-width:860px}
+.table-scroll thead{position:sticky;top:0;z-index:5}
+.table-scroll thead tr{background:var(--surface2);box-shadow:0 1px 0 var(--border)}
+.table-scroll th{padding:10px 12px;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;text-align:right;white-space:nowrap;border-bottom:2px solid var(--border);background:var(--surface2)}
+.table-scroll th.left{text-align:left}
+.table-scroll th.center{text-align:center}
+.table-scroll td{padding:8px 12px;font-size:13px;border-bottom:1px solid #f1f5f9;text-align:right;white-space:nowrap;color:var(--text)}
+.table-scroll td.left{text-align:left}
+.table-scroll td.center{text-align:center}
+.table-scroll tr:last-child td{border-bottom:none}
+.table-scroll tbody tr:hover{background:#f8fafc}
+.table-scroll tbody tr:nth-child(even){background:#fafbfc}
+.table-scroll tbody tr:nth-child(even):hover{background:#f4f7fa}
+.plat-pill{display:inline-block;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.04em}
+.pill-google{background:var(--google-light);color:var(--google)}
+.pill-meta{background:var(--meta-light);color:var(--meta)}
+.empty-state{padding:48px;text-align:center;color:var(--text2);font-size:13px}
+.empty-state i{font-size:32px;color:var(--text3);display:block;margin-bottom:8px}
 </style>
 </head>
 <body>
@@ -958,8 +1014,7 @@ function reinitAll(){
   rebuildT1Dropdowns();
   renderTab0();renderTab1();renderTab3();
 }
-reinitAll(); // sets up UI with seed data immediately
-loadDataFromRepo(); // then asynchronously fetches fresh data from repo
+reinitAll(); // sets up UI with seed data immediately — loadDataFromRepo() called after XLSX loads
 </script>
 </body>
 </html>
