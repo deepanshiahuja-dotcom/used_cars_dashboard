@@ -840,11 +840,12 @@ function showMsg(text, type){
 }
 
 function parseLeads(wb){
-  var rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {defval:null, raw:false});
+  var rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {defval:null, raw:true});
   var map = {};
   rows.forEach(function(r){
     var _dt = r['Date'];
-    var d = _dt ? (_dt instanceof Date ? _dt : new Date(String(_dt).replace(/\s/,'T'))) : null;
+    // cellDates:true + raw:true gives proper JS Date objects
+    var d = (_dt instanceof Date) ? _dt : (_dt ? new Date(_dt) : null);
     if(!d || isNaN(d.getTime())) return;
     var rawCamp = (r['utm_campaign'] || '').trim();
     var camp = rawCamp === 'Nasik-Search-Buy-UsedCar-8april' ? 'Nashik-Search-Buy-UsedCar-8april' : rawCamp;
@@ -874,10 +875,10 @@ function parseSpends(wb){
   // GA sheet: Day | Campaign | Cost
   var gaSheet = wb.Sheets['Ga'];
   if(gaSheet){
-    XLSX.utils.sheet_to_json(gaSheet, {defval:null, raw:false}).forEach(function(r){
+    XLSX.utils.sheet_to_json(gaSheet, {defval:null, raw:true}).forEach(function(r){
       if(!(Number(r['Cost']) > 0)) return;
       var _dy = r['Day'];
-      var d = _dy ? (_dy instanceof Date ? _dy : new Date(String(_dy).replace(/\s/,'T'))) : null;
+      var d = (_dy instanceof Date) ? _dy : (_dy ? new Date(_dy) : null);
       if(!d || isNaN(d.getTime())) return;
       var camp = (r['Campaign'] || '').trim(); if(!camp) return;
       camp = camp === 'Nasik-Search-Buy-UsedCar-8april' ? 'Nashik-Search-Buy-UsedCar-8april' : camp;
@@ -893,10 +894,10 @@ function parseSpends(wb){
   // FB sheet: Reporting starts | Campaign name | Amount spent (INR)
   var fbSheet = wb.Sheets['FB'];
   if(fbSheet){
-    XLSX.utils.sheet_to_json(fbSheet, {defval:null, raw:false}).forEach(function(r){
+    XLSX.utils.sheet_to_json(fbSheet, {defval:null, raw:true}).forEach(function(r){
       if(!(Number(r['Amount spent (INR)']) > 0)) return;
       var _rs = r['Reporting starts'];
-      var d = _rs ? (_rs instanceof Date ? _rs : new Date(String(_rs).replace(/\s/,'T'))) : null;
+      var d = (_rs instanceof Date) ? _rs : (_rs ? new Date(_rs) : null);
       if(!d || isNaN(d.getTime())) return;
       var camp = (r['Campaign name'] || '').trim(); if(!camp) return;
       var cm = CAMP_MAP_FETCH[camp];
@@ -954,8 +955,8 @@ async function loadDataFromRepo(){
 
     var results = await Promise.all([fetchFile('data.xlsx'), fetchFile('Used_Cars_Spends.xlsx')]);
 
-    var leadsWb  = XLSX.read(results[0],{type:'array',cellDates:true});
-    var spendsWb = XLSX.read(results[1],{type:'array',cellDates:true});
+    var leadsWb  = XLSX.read(results[0],{type:'array',cellDates:true,dense:false});
+    var spendsWb = XLSX.read(results[1],{type:'array',cellDates:true,dense:false});
     var leadsMap  = parseLeads(leadsWb);
     var spendsMap = parseSpends(spendsWb);
     DATA = mergeMaps(leadsMap, spendsMap);
