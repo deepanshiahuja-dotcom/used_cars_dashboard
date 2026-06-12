@@ -679,7 +679,7 @@ function renderTab3(){
   var MDAYS={Jan:31,Feb:28,Mar:31,Apr:30,May:31,Jun:30,Jul:31,Aug:31,Sep:30,Oct:31,Nov:30,Dec:31};
   var MNUM={Jan:1,Feb:2,Mar:3,Apr:4,May:5,Jun:6,Jul:7,Aug:8,Sep:9,Oct:10,Nov:11,Dec:12};
   var months=[...new Set(DATA.map(function(r){return r.month;}))].sort(function(a,b){return monthSortKey(a)-monthSortKey(b);});
-  function activeDays(rows){return new Set(rows.filter(function(r){return r.gen_leads>0||r.spends>0;}).map(function(r){return r.dateStr;})).size||1;}
+  function activeDays(rows){return new Set(rows.map(function(r){return r.dateStr;})).size||1;}
   function getA(rows){
     var sp=0,gl=0,tr=0,dt=0;
     rows.forEach(function(r){sp+=r.spends;gl+=r.gen_leads;tr+=r.triggered;dt+=r.dealer_triggers;});
@@ -733,10 +733,11 @@ function renderTab3(){
     var monthData=months.map(function(m){
       var rows=DATA.filter(function(r){return r.month===m;});
       if(cg.f) rows=rows.filter(function(r){return r.city===cg.f;});
+      // Count active days BEFORE platform filter so all dates in the month are counted
+      var days=activeDays(rows);
       if(platFilter!=='All') rows=rows.filter(function(r){return r.Platform===platFilter;});
       var rowsG=rows.filter(function(r){return r.Platform==='Google';});
       var rowsM=rows.filter(function(r){return r.Platform==='Meta';});
-      var days=activeDays(rows);
       var calDays=MDAYS[m.split("'")[0]]||30;
       return{m:m,days:days,calDays:calDays,a:getA(rows),aG:getA(rowsG),aM:getA(rowsM)};
     });
@@ -847,9 +848,15 @@ function parseLeads(wb){
     if(!d || isNaN(d.getTime())) return;
     var rawCamp = (r['utm_campaign'] || '').trim();
     var camp = rawCamp === 'Nasik-Search-Buy-UsedCar-8april' ? 'Nashik-Search-Buy-UsedCar-8april' : rawCamp;
-    var cm = CAMP_MAP_FETCH[camp] || {}; 
-    var city = cm.city || camp;
-    var plat = cm.platform || 'Unknown';
+    if(!camp) return;
+    // Use CITY column from file directly — works for any new campaign automatically
+    var city = (r['CITY'] || '').trim();
+    if(!city) return;
+    // Only keep the 3 known cities
+    if(city !== 'Ahmedabad' && city !== 'Chandigarh' && city !== 'Nashik') return;
+    // Detect platform: known Meta campaigns contain 'UCR' or 'Catalogue', else Google
+    var cm = CAMP_MAP_FETCH[camp];
+    var plat = cm ? cm.platform : (camp.indexOf('UCR') > -1 || camp.indexOf('Catalogue') > -1 || camp.indexOf('Meta') > -1 ? 'Meta' : 'Google');
     var ds = toDateStr(d), mo = getMonth(d), w = wom(ds);
     var key = ds+'|'+camp+'|'+city+'|'+mo+'|'+w+'|'+plat;
     if(!map[key]) map[key] = {dateStr:ds, campaign:camp, city:city, month:mo, wom:w, Platform:plat,
@@ -874,9 +881,12 @@ function parseSpends(wb){
       if(!d || isNaN(d.getTime())) return;
       var camp = (r['Campaign'] || '').trim(); if(!camp) return;
       camp = camp === 'Nasik-Search-Buy-UsedCar-8april' ? 'Nashik-Search-Buy-UsedCar-8april' : camp;
-      var cm = CAMP_MAP_FETCH[camp] || {};
+      var cm = CAMP_MAP_FETCH[camp];
+      var city = cm ? cm.city : (camp.indexOf('AHM') > -1 ? 'Ahmedabad' : camp.indexOf('CHD') > -1 ? 'Chandigarh' : camp.indexOf('Nashik') > -1 || camp.indexOf('Nasik') > -1 ? 'Nashik' : null);
+      if(!city) return; // skip campaigns not belonging to our 3 cities
+      var plat = cm ? cm.platform : 'Google';
       var ds = toDateStr(d), mo = getMonth(d), w = wom(ds);
-      var key = ds+'|'+camp+'|'+(cm.city||camp)+'|'+mo+'|'+w+'|'+(cm.platform||'Google');
+      var key = ds+'|'+camp+'|'+city+'|'+mo+'|'+w+'|'+plat;
       map[key] = (map[key]||0) + (Number(r['Cost'])||0);
     });
   }
@@ -889,9 +899,12 @@ function parseSpends(wb){
       var d = _rs ? (_rs instanceof Date ? _rs : new Date(String(_rs).replace(/\s/,'T'))) : null;
       if(!d || isNaN(d.getTime())) return;
       var camp = (r['Campaign name'] || '').trim(); if(!camp) return;
-      var cm = CAMP_MAP_FETCH[camp] || {};
+      var cm = CAMP_MAP_FETCH[camp];
+      var city = cm ? cm.city : (camp.indexOf('AHM') > -1 ? 'Ahmedabad' : camp.indexOf('CHD') > -1 || camp.indexOf('Chandigarh') > -1 ? 'Chandigarh' : camp.indexOf('Nashik') > -1 || camp.indexOf('Nasik') > -1 ? 'Nashik' : null);
+      if(!city) return; // skip campaigns not belonging to our 3 cities
+      var plat = cm ? cm.platform : 'Meta';
       var ds = toDateStr(d), mo = getMonth(d), w = wom(ds);
-      var key = ds+'|'+camp+'|'+(cm.city||camp)+'|'+mo+'|'+w+'|'+(cm.platform||'Meta');
+      var key = ds+'|'+camp+'|'+city+'|'+mo+'|'+w+'|'+plat;
       map[key] = (map[key]||0) + (Number(r['Amount spent (INR)'])||0);
     });
   }
