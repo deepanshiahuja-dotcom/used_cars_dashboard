@@ -893,13 +893,34 @@ async function loadDataFromRepo(){
   try{
     loadEl.style.display = 'flex';
 
-    // Fetch both files in parallel
+    // Get latest commit SHA from GitHub API to use as cache-buster.
+    // This ensures the browser always fetches the file from the latest commit,
+    // bypassing GitHub Pages' aggressive CDN caching completely.
+    var cacheBuster = Date.now(); // fallback
+    try{
+      // Extract owner/repo from the current page URL
+      // e.g. https://deepanshiahuja-dotcom.github.io/used-cars-dashboard/
+      var pathParts = window.location.pathname.replace(/\/$/,'').split('/');
+      var repo = pathParts[pathParts.length-1]; // last segment = repo name
+      var hostname = window.location.hostname; // e.g. deepanshiahuja-dotcom.github.io
+      var owner = hostname.replace('.github.io','');
+      if(owner && repo && repo !== ''){
+        var apiUrl = 'https://api.github.com/repos/'+owner+'/'+repo+'/commits?per_page=1';
+        var apiResp = await fetch(apiUrl, {cache:'no-store'});
+        if(apiResp.ok){
+          var commits = await apiResp.json();
+          if(commits && commits[0]) cacheBuster = commits[0].sha.slice(0,8);
+        }
+      }
+    }catch(e){ /* silently use Date.now() fallback */ }
+
+    // Fetch both Excel files using the commit SHA as cache-buster
     var results = await Promise.all([
-      fetch('data.xlsx?v='+Date.now(), {cache:'no-store'}).then(function(r){
+      fetch('data.xlsx?v='+cacheBuster, {cache:'no-store'}).then(function(r){
         if(!r.ok) throw new Error('data.xlsx not found ('+r.status+')');
         return r.arrayBuffer();
       }),
-      fetch('Used_Cars_Spends.xlsx?v='+Date.now(), {cache:'no-store'}).then(function(r){
+      fetch('Used_Cars_Spends.xlsx?v='+cacheBuster, {cache:'no-store'}).then(function(r){
         if(!r.ok) throw new Error('Used_Cars_Spends.xlsx not found ('+r.status+')');
         return r.arrayBuffer();
       })
